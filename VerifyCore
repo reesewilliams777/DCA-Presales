@@ -1,0 +1,109 @@
+Synopsis: Following reveals a command to use to ensure DCA core has proper network setting. In this case the root cause was due to nmtui setting 
+subnet mask to 32 so master node install worked (and NFS external node) but unable to add any worker Nodes, error messages ranged from "cannot 
+contact that node" to "that node is not on the same subnet). One important thing to note is that ALL of the various Linux commands indicated 
+that this SHOULD work. 
+
+Issue: NETWORK_ADDRESS was set to core's IP address and NOT the network
+
+Resolution: Advised to re-install the appliance. 
+
+A reboot/kube-redeploy/kube-restart did not help fixing the NETWORK_ADDRESS problem on the master node. I can’t think of any other solution now other than re-installing CDF/DCA…
+
+Regards,
+Joby
+
+From: Joseph, Joby (ITOM DCA) 
+Sent: Friday, April 27, 2018 11:12 AM
+To: Williams, Reese <reese.williams@hpe.com>
+Subject: RE: need some help 
+
+Hi Reese,
+
+I’m still seeing issues with the subnet mask, but in the base-configmap of core name space… I guess this didn’t get recreated when kube-redeploy.sh/kube-restart.sh operations.
+
+[root@dcamaster log]# kubectl get cm base-configmap -n core -o yaml
+apiVersion: v1
+data:
+  API_SERVER: dcamaster.sbx.apslab.hpe.com
+  AWS_REGION: ""
+  CDF_API_SERVER_SESSION_NAME: ""
+  CLOUD_PROVIDER: none
+  DOCKER_HTTP_PROXY: ""
+  DOCKER_HTTPS_PROXY: ""
+ DOCKER_NO_PROXY: ""
+  ETCD_ENDPOINT: https://dcamaster.sbx.apslab.hpe.com:4001
+  EXTERNAL_ACCESS_HOST: dcamaster.sbx.apslab.hpe.com
+  FIRST_MASTER_NODE: dcamaster.sbx.apslab.hpe.com
+  FLANNEL_BACKEND_TYPE: host-gw
+  HA_VIRTUAL_IP: ""
+  K8S_DEFAULT_SVC_IP: 172.17.17.1
+  K8S_HOME: /opt/kubernetes
+  KEEPALIVED_NOPREEMPT: ""
+  KEEPALIVED_VIRTUAL_ROUTER_ID: "51"
+  MASTER_API_SSL_PORT: "8443"
+  MASTER_NODES: dcamaster.sbx.apslab.hpe.com
+  NETWORK_ADDRESS: 172.16.25.20
+  PLATFORM_VERSION: 2018.01.00120
+  POD_CIDR: 172.16.0.0/16
+  REGISTRY_ORGNAME: hpeswitomsandbox
+  SERVICE_CIDR: 172.17.17.0/24
+  SUITE_REGISTRY: localhost:5000
+  SYSTEM_GROUP_ID: "1999"
+  SYSTEM_NAMESPACE: core
+  SYSTEM_USER_ID: "1999"
+  TMP_FOLDER: /tmp
+kind: ConfigMap
+metadata:
+  creationTimestamp: 2018-04-19T19:37:48Z
+  name: base-configmap
+  namespace: core
+  resourceVersion: "672"
+  selfLink: /api/v1/namespaces/core/configmaps/base-configmap
+  uid: 23efb7f2-4409-11e8-9a02-0050569b64ff
+
+See the highlighted portion… this should have been “172.16.25.0”, but instead recorded as 172.16.25.20 (and that is IP of the master node) and that is because we initially had a subnet mask of /32. This  made me believe that the base-configmap didn’t get recreated by those operations.
+
+During pre-check.sh, the ‘NETWORK_ADDRESS’ of master node (here it is 172.16.25.20) is checked against the NETWORK_ADDRESS of the new worker node (which will be 172.16.25.0) that is where it is failing.
+
+I’m attempting one more time to see if kube-redeploy.sh/kube-restart.sh helps to fix this. If not, we may have to re-install CDF/DCA on the master 
+
+Regards,
+Joby
+
+
+From: Williams, Reese 
+Sent: Friday, April 27, 2018 9:34 AM
+To: Joseph, Joby (ITOM DCA) <joby.joseph@hpe.com>
+Subject: RE: need some help 
+
+Thank you 
+I can't figure it out
+My last error was that it couldn't reach it 
+I can do ping and nslookup from master to the node
+Node is dcawrk1 
+Reese Williams
+Solution Architect
+Micro Focus
+(678) 938 0123
+
+On Apr 27, 2018 12:02 AM, "Joseph, Joby (ITOM DCA)" <joby.joseph@hpe.com> wrote:
+I will have a look!
+ 
+ 
+From: Williams, Reese 
+Sent: Friday, April 27, 2018 1:02 AM
+To: Joseph, Joby (ITOM DCA) <joby.joseph@hpe.com>
+Subject: need some help 
+ 
+Can you log in to the environment and take a look ?
+ 
+I still can’t add the worker node via UI. 
+ 
+It still indicates that it’s not in the same subnet. When I do ifconfig and ip a the two servers (master and dcawrk1) seem to be consistent. 
+ 
+I checked various network config files
+ 
+Finally from master node, I can ping, nslookup and it does right thing, I also updated /etc/hosts, just not sure what is going on …
+ 
+ 
+ 
